@@ -4,6 +4,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -22,6 +23,25 @@ func FileList(path, prefix, suffix string) ([]string, error) {
 		}
 	}
 
+	return listOfFiles, nil
+}
+
+func SubFileList(path, prefix, suffix string) ([]string, error) {
+	var listOfFiles []string
+
+	err := filepath.Walk(path,
+		func(folderAndPath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if strings.HasPrefix(info.Name(), prefix) && strings.HasSuffix(info.Name(), suffix) {
+				listOfFiles = append(listOfFiles, folderAndPath)
+			}
+			return nil
+		})
+	if err != nil {
+		return nil, err
+	}
 	return listOfFiles, nil
 }
 
