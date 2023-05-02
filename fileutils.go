@@ -1,6 +1,7 @@
 package fileutils
 
 import (
+	"encoding/csv"
 	"io"
 	"io/ioutil"
 	"os"
@@ -73,4 +74,37 @@ func MoveFile(src, dst string) error {
 		return err
 	}
 	return err
+}
+
+// CsvToMap converts the csv data (with header) into map, with header parts as keys
+func CsvToMap(fileName string, separator rune) ([]map[string]string, error) {
+	data, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer data.Close()
+
+	r := csv.NewReader(data)
+	r.Comma = separator
+	rows := []map[string]string{}
+	var header []string
+	for {
+		record, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if header == nil {
+			header = record
+		} else {
+			dict := map[string]string{}
+			for i := range header {
+				dict[header[i]] = record[i]
+			}
+			rows = append(rows, dict)
+		}
+	}
+	return rows, nil
 }
