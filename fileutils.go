@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
+	//"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,10 +15,15 @@ import (
 func FileList(path, prefix, suffix string) ([]string, error) {
 	var listOfFiles []string
 
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return listOfFiles, err
 	}
+
+	//files, err := ioutil.ReadDir(path)
+	//if err != nil {
+	//	return listOfFiles, err
+	//}
 
 	for _, file := range files {
 		if strings.HasPrefix(file.Name(), prefix) && strings.HasSuffix(file.Name(), suffix) {
@@ -82,7 +87,7 @@ func MoveFile(src, dst string) error {
 // Simple guard against processing a still-growing file. No atomic rename involved.
 func CopyFile(src, dst string) error {
 	const attempts = 5
-	const settle = 300 * time.Millisecond
+	const settle = 500 * time.Millisecond
 
 	if !waitStableSize(src, attempts, settle) {
 		return fmt.Errorf("source not stable: %s", src)
@@ -147,8 +152,8 @@ func CsvToMap(fileName string, separator rune) ([]map[string]string, error) {
 // It samples size up to `attempts` times with `settle` delay.
 // If two consecutive samples are equal, the file is considered stable.
 func waitStableSize(path string, attempts int, settle time.Duration) bool {
-	if attempts < 2 {
-		attempts = 2
+	if attempts < 3 {
+		attempts = 3
 	}
 
 	var prev int64 = -1
