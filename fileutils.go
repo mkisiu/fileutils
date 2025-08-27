@@ -4,11 +4,25 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	//"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
+)
+
+// default
+const (
+	defaultAttempts = 5
+	defaultSettleMS = 500
+)
+
+// safe bounds
+const (
+	minAttempts = 3
+	maxAttempts = 20
+	minSettleMS = 100
+	maxSettleMS = 1000
 )
 
 // FileList returns slice of strings, containing filenames base on prefix and suffix
@@ -53,7 +67,7 @@ func SubFileList(path, prefix, suffix string) ([]string, error) {
 	return listOfFiles, nil
 }
 
-// CopyFile copies file from source location to destination.
+// CopyFileDepr copies file from source location to destination.
 func CopyFileDepr(src, dst string) error {
 	// Open the source file
 	srcFile, err := os.Open(src)
@@ -86,8 +100,8 @@ func MoveFile(src, dst string) error {
 // CopyFile waits until src looks stable (size stops changing) and then copies it to dst.
 // Simple guard against processing a still-growing file. No atomic rename involved.
 func CopyFile(src, dst string) error {
-	const attempts = 5
-	const settle = 500 * time.Millisecond
+	attempts := getenvInt("FILEUTILS_STABLE_ATTEMPTS", defaultAttempts, minAttempts, maxAttempts)
+	settle := getenvDur("FILEUTILS_STABLE_SETTLE_MS", defaultSettleMS, minSettleMS, maxSettleMS)
 
 	if !waitStableSize(src, attempts, settle) {
 		return fmt.Errorf("source not stable: %s", src)
@@ -172,4 +186,36 @@ func waitStableSize(path string, attempts int, settle time.Duration) bool {
 		time.Sleep(settle)
 	}
 	return false
+}
+
+// getenvInt reads env as int and enforces sane min/max bounds.
+// If parsing fails or value is out of range, it returns def.
+func getenvInt(key string, def, min, max int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil || n < min || n > max {
+		return def
+	}
+
+	return n
+}
+
+// getenvDurationMS reads env as int (milliseconds) and enforces sane bounds.
+// If parsing fails or value is out of range, it returns def.
+func getenvDur(key string, defMS, minMS, maxMS int) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return time.Duration(defMS) * time.Millisecond
+	}
+
+	n, err := strconv.Atoi(v)
+	if err != nil || n < minMS || n > maxMS {
+		return time.Duration(defMS) * time.Millisecond
+	}
+
+	return time.Duration(n) * time.Millisecond
 }
